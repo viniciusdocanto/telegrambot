@@ -14,20 +14,17 @@ app.get('/', (req, res) => {
     res.send('Servidor do Bot do Telegram está rodando! 🚀');
 });
 
-// Rota que vai receber o Webhook do GitHub
-app.post('/github-webhook', (req, res) => {
-    // O GitHub envia um header 'x-github-event' para sabermos qual foi a ação
+// Função para processar o Webhook do GitHub
+const processWebhook = (req, res) => {
     const event = req.headers['x-github-event'];
     const payload = req.body;
 
-    // Se o evento foi um 'push' (alguém enviou código pro repositório)
     if (event === 'push') {
         const repoName = payload.repository.name;
         const pusherName = payload.pusher.name;
         const commitMessage = payload.head_commit ? payload.head_commit.message : 'Sem mensagem de commit';
         const commitUrl = payload.head_commit ? payload.head_commit.url : payload.repository.html_url;
 
-        // Montando a mensagem amigável que o bot vai enviar
         const mensagem = `
 🚀 *Novo Push (Deploy) Detectado!*
 📦 *Repositório:* ${repoName}
@@ -36,8 +33,6 @@ app.post('/github-webhook', (req, res) => {
 🔗 [Ver Commit no GitHub](${commitUrl})
         `;
 
-        // Envia a mensagem pro seu chat.
-        // process.env.TELEGRAM_CHAT_ID é o seu ID pessoal ou do grupo no Telegram
         if (process.env.TELEGRAM_CHAT_ID) {
             bot.telegram.sendMessage(process.env.TELEGRAM_CHAT_ID, mensagem, { parse_mode: 'Markdown' })
                 .then(() => console.log(`Notificação enviada com sucesso para o chat ${process.env.TELEGRAM_CHAT_ID}`))
@@ -45,15 +40,41 @@ app.post('/github-webhook', (req, res) => {
         } else {
             console.log('TELEGRAM_CHAT_ID não configurado no .env. A mensagem seria:', mensagem);
         }
+    } else if (event === 'workflow_run') {
+        const workflowName = payload.workflow_run.name;
+        const status = payload.workflow_run.conclusion; // success, failure, cancelled, etc.
+        const repoName = payload.repository.name;
+        const workflowUrl = payload.workflow_run.html_url;
+
+        let icon = '🔄';
+        if (status === 'success') icon = '✅';
+        else if (status === 'failure') icon = '❌';
+        else if (status === 'cancelled') icon = '🚫';
+
+        const mensagem = `
+${icon} *Status da Action: ${workflowName}*
+📦 *Repositório:* ${repoName}
+📊 *Resultado:* ${status}
+🔗 [Ver Logs no GitHub](${workflowUrl})
+        `;
+
+        if (process.env.TELEGRAM_CHAT_ID) {
+            bot.telegram.sendMessage(process.env.TELEGRAM_CHAT_ID, mensagem, { parse_mode: 'Markdown' })
+                .then(() => console.log(`Notificação de Action enviada para o chat ${process.env.TELEGRAM_CHAT_ID}`))
+                .catch(err => console.error('Erro ao enviar mensagem de Action pro Telegram:', err));
+        }
     } else if (event === 'ping') {
         if (process.env.TELEGRAM_CHAT_ID) {
             bot.telegram.sendMessage(process.env.TELEGRAM_CHAT_ID, '🏓 *Webhook do GitHub conectado com sucesso!*\n\nAgora os próximos pushes (deploys) aparecerão aqui.', { parse_mode: 'Markdown' });
         }
     }
 
-    // Responde ao GitHub que recebemos o aviso com sucesso (status 200)
     res.status(200).send('Webhook recebido com sucesso!');
-});
+};
+
+// Aceita o webhook tanto na raiz quanto no caminho específico
+app.post('/', processWebhook);
+app.post('/github-webhook', processWebhook);
 
 // Comando de teste no Telegram (quando você digitar /start no bot)
 bot.start((ctx) => {

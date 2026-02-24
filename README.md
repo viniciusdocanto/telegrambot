@@ -59,7 +59,10 @@ Vá no repositório que você deseja monitorar:
 2. Em **Payload URL**, coloque o endereço do seu servidor seguido de `/github-webhook`. Exemplo:
    `https://seu-bot.onrender.com/github-webhook`
 3. Em **Content type**, selecione `application/json`.
-4. Deixe marcado apenas `"Just the push event."` e salve.
+6. Selecione **"Let me select individual events."** e marque:
+   - `Pushes`
+   - `Workflow runs`
+7. Clique em **Update webhook** (ou Add webhook).
 
 ---
 Desenvolvido com ☕ e ❤️ para facilitar o dia a dia de desenvolvedores.

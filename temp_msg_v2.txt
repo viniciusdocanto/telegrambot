@@ -1,1 +1,1 @@
-docs: add README and LICENSE
+fix: suporte a rota raiz e notificacoes de GitHub Actions
