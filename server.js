@@ -19,6 +19,8 @@ const processWebhook = (req, res) => {
     const event = req.headers['x-github-event'];
     const payload = req.body;
 
+    console.log(`[GitHub Webhook] Evento recebido: ${event}`);
+
     if (event === 'push') {
         const repoName = payload.repository.name;
         const pusherName = payload.pusher.name;
@@ -38,13 +40,24 @@ const processWebhook = (req, res) => {
                 .then(() => console.log(`Notificação enviada com sucesso para o chat ${process.env.TELEGRAM_CHAT_ID}`))
                 .catch(err => console.error('Erro ao enviar mensagem pro Telegram:', err));
         } else {
-            console.log('TELEGRAM_CHAT_ID não configurado no .env. A mensagem seria:', mensagem);
+            console.log('TELEGRAM_CHAT_ID não configurado no .env.');
         }
-    } else if (event === 'workflow_run') {
-        const workflowName = payload.workflow_run.name;
-        const status = payload.workflow_run.conclusion; // success, failure, cancelled, etc.
+    } else if (event === 'workflow_run' || event === 'check_run') {
+        const action = payload.action;
+        const workflowData = payload.workflow_run || payload.check_run;
+        
+        if (!workflowData) return res.status(200).send('Payload incompleto');
+
+        // Monitoramos apenas quando termina (completed) para evitar spam
+        if (action !== 'completed' && event === 'workflow_run') {
+            console.log(`Workflow em andamento (${action}). Aguardando conclusão...`);
+            return res.status(200).send('Aguardando conclusão');
+        }
+
+        const status = workflowData.conclusion; // success, failure, cancelled, etc.
         const repoName = payload.repository.name;
-        const workflowUrl = payload.workflow_run.html_url;
+        const workflowName = workflowData.name || (event === 'check_run' ? 'Check Run' : 'Workflow');
+        const workflowUrl = workflowData.html_url;
 
         let icon = '🔄';
         if (status === 'success') icon = '✅';
@@ -54,18 +67,18 @@ const processWebhook = (req, res) => {
         const mensagem = `
 ${icon} *Status da Action: ${workflowName}*
 📦 *Repositório:* ${repoName}
-📊 *Resultado:* ${status}
+📊 *Resultado:* ${status || 'Pendente'}
 🔗 [Ver Logs no GitHub](${workflowUrl})
         `;
 
         if (process.env.TELEGRAM_CHAT_ID) {
             bot.telegram.sendMessage(process.env.TELEGRAM_CHAT_ID, mensagem, { parse_mode: 'Markdown' })
-                .then(() => console.log(`Notificação de Action enviada para o chat ${process.env.TELEGRAM_CHAT_ID}`))
-                .catch(err => console.error('Erro ao enviar mensagem de Action pro Telegram:', err));
+                .then(() => console.log(`Notificação de ${event} enviada para o chat ${process.env.TELEGRAM_CHAT_ID}`))
+                .catch(err => console.error(`Erro ao enviar mensagem de ${event} pro Telegram:`, err));
         }
     } else if (event === 'ping') {
         if (process.env.TELEGRAM_CHAT_ID) {
-            bot.telegram.sendMessage(process.env.TELEGRAM_CHAT_ID, '🏓 *Webhook do GitHub conectado com sucesso!*\n\nAgora os próximos pushes (deploys) aparecerão aqui.', { parse_mode: 'Markdown' });
+            bot.telegram.sendMessage(process.env.TELEGRAM_CHAT_ID, '🏓 *Webhook do GitHub conectado com sucesso!*\n\nAgora os próximos pushes e deploys aparecerão aqui.', { parse_mode: 'Markdown' });
         }
     }
 
