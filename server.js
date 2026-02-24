@@ -65,15 +65,6 @@ bot.start((ctx) => {
 // Inicia o bot
 bot.launch();
 
-// Configuração do Smee (para receber os webhooks do GitHub sem problemas de IP local)
-const SmeeClient = require('smee-client');
-const smee = new SmeeClient({
-    source: 'https://smee.io/pU0kI4qS5e3oVwA',
-    target: `http://127.0.0.1:${process.env.PORT || 3000}/github-webhook`,
-    logger: console
-});
-const events = smee.start();
-
 // Inicia o servidor Express na porta 3000
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
