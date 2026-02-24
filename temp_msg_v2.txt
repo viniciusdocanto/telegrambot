@@ -1,1 +1,1 @@
-chore: remove smee dev tools and add gitignore
+chore: remove sensitive tracking files (.env and node_modules)
