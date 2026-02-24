@@ -1,1 +1,1 @@
-chore: remove sensitive tracking files (.env and node_modules)
+docs: add README and LICENSE
