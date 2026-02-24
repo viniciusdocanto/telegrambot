@@ -1,4 +1,49 @@
+# Dependency directories
 node_modules/
+jspm_packages/
+
+# Environment variables
 .env
-.env.*
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.env-sample-original
+
+# Debug logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# OS-specific files
 .DS_Store
+.DS_Store?
+._*
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# IDEs and editors
+.vscode/
+.idea/
+*.swp
+*.swo
+.project
+.settings/
+.classpath
+
+# Local development / temporary files
+*.tmp
+*.temp
+scrub_script.js
+run_scrub.sh
+reconstruct_history.js
+reconstruct_history_v2.js
+temp_msg.txt
+temp_msg_v2.txt
+
+# Production/Build
+dist/
+build/
+out/
