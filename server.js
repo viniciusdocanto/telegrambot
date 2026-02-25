@@ -137,16 +137,46 @@ bot.start((ctx) => {
     ctx.reply(`Olá! Eu sou o seu bot de notificações do GitHub. 🤖\n\n⚠️ Seu ID DE CHAT é: ${chatId}\n\nCopie esse número e coloque na variável TELEGRAM_CHAT_ID do seu arquivo .env.`);
 });
 
-// Inicia o bot
-bot.launch();
+// Configuração de Webhook para o Render
+if (process.env.RENDER_EXTERNAL_URL) {
+    const webhookPath = `/telegraf/${bot.secretPathComponent()}`;
+    bot.telegram.setWebhook(`${process.env.RENDER_EXTERNAL_URL}${webhookPath}`)
+        .then(() => {
+            console.log('🤖 Bot configurado com Webhook no Render.');
+            app.use(bot.webhookCallback(webhookPath));
+        })
+        .catch(err => console.error('Erro ao configurar Webhook no Telegram:', err));
+} else {
+    // Modo Polling para ambiente local
+    bot.launch()
+        .then(() => console.log('🤖 Bot do Telegram inicializado em modo Polling.'))
+        .catch(err => {
+            if (err.response && err.response.error_code === 409) {
+                console.error('❌ Conflito de Bot detectado (409). Outra instância está rodando ou o Render ainda está migrando.');
+            } else {
+                console.error('Erro ao iniciar o bot:', err);
+            }
+        });
+}
 
-// Inicia o servidor Express na porta 3000
+// Inicia o servidor Express na porta especificada pelo Render ou 3000 local
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-    console.log(`🚀 Servidor rodando na porta ${PORT}`);
-    console.log(`🤖 Bot do Telegram inicializado.`);
+app.listen(PORT, '0.0.0.0', () => {
+    console.log(`🚀 Servidor Express rodando na porta ${PORT}`);
 });
 
-// Trata encerramento gracioso (Ctrl+C no terminal)
-process.once('SIGINT', () => bot.stop('SIGINT'));
-process.once('SIGTERM', () => bot.stop('SIGTERM'));
+// Trata encerramento gracioso (Ctrl+C no terminal) para evitar bot "preso"
+const shutdown = (signal) => {
+    console.log(`Recebido sinal ${signal}. Encerrando bot...`);
+    // Só tenta parar o bot se ele foi iniciado (evita erro "Bot is not running")
+    try {
+        if (bot.polling) {
+            bot.stop(signal);
+        }
+    } catch (e) { }
+    process.exit(0);
+};
+
+process.once('SIGINT', () => shutdown('SIGINT'));
+process.once('SIGTERM', () => shutdown('SIGTERM'));
+
